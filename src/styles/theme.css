@@ -1,0 +1,75 @@
+:root {
+  /* Brand Color Palette */
+  --primary-pink: #FF4F91;
+  --primary-pink-hover: #E83E7F;
+  --primary-pink-light: #FFEBF2;
+  --primary-pink-ultra-light: #FFF0F5;
+
+  --coral: #FF8066;
+  --coral-hover: #F26E54;
+  --coral-light: #FFF0ED;
+
+  /* Neutrals & Backgrounds */
+  --bg-app: #FFF5F7;
+  --bg-card: #FFFFFF;
+  --bg-elevated: #FFFFFF;
+  --bg-lavender: #F0E9FF;
+  --bg-lavender-light: #FAF7FF;
+  --border-light: #F4E8EE;
+  --border-focus: #FFB3D1;
+
+  /* Typography Colors */
+  --text-dark: #30243A;
+  --text-secondary: #63576E;
+  --text-muted: #8D8295;
+  --text-light: #B8B0C0;
+  --text-white: #FFFFFF;
+
+  /* Semantic Colors */
+  --color-success: #10B981;
+  --color-success-bg: #E8F8F0;
+  --color-warning: #F59E0B;
+  --color-warning-bg: #FFF7ED;
+  --color-danger: #EF4444;
+  --color-danger-bg: #FEF2F2;
+  --color-info: #3B82F6;
+  --color-info-bg: #EFF6FF;
+
+  /* Channels */
+  --channel-whatsapp: #25D366;
+  --channel-whatsapp-bg: #EAFBF0;
+  --channel-email: #4F46E5;
+  --channel-email-bg: #EEF2FF;
+  --channel-sms: #8B5CF6;
+  --channel-sms-bg: #F5F3FF;
+
+  /* Gradients */
+  --gradient-primary: linear-gradient(135deg, #FF4F91 0%, #FF8066 100%);
+  --gradient-primary-reverse: linear-gradient(135deg, #FF8066 0%, #FF4F91 100%);
+  --gradient-hero: linear-gradient(135deg, #FF4F91 0%, #FF7A60 60%, #FFA07A 100%);
+  --gradient-upgrade: linear-gradient(135deg, #FFF0F5 0%, #F5EEFF 100%);
+  --gradient-glass: linear-gradient(135deg, rgba(255, 255, 255, 0.9) 0%, rgba(255, 255, 255, 0.7) 100%);
+
+  /* Shadows */
+  --shadow-sm: 0 2px 8px rgba(48, 36, 58, 0.04);
+  --shadow-md: 0 8px 24px rgba(255, 79, 145, 0.07), 0 2px 6px rgba(48, 36, 58, 0.03);
+  --shadow-lg: 0 14px 34px rgba(255, 79, 145, 0.12), 0 4px 12px rgba(48, 36, 58, 0.04);
+  --shadow-primary: 0 8px 20px rgba(255, 79, 145, 0.28);
+  --shadow-primary-lg: 0 12px 28px rgba(255, 79, 145, 0.38);
+
+  /* Border Radii */
+  --radius-sm: 8px;
+  --radius-md: 14px;
+  --radius-lg: 20px;
+  --radius-xl: 28px;
+  --radius-full: 9999px;
+
+  /* Layout */
+  --sidebar-width: 250px;
+  --topbar-height: 72px;
+  --bottombar-height: 68px;
+
+  /* Typography */
+  --font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-heading: 'Outfit', 'Plus Jakarta Sans', sans-serif;
+}
