@@ -23,7 +23,7 @@ import { ConfirmDialog } from '../components/common/ConfirmDialog';
 import toast from 'react-hot-toast';
 
 export const Settings = () => {
-  const { user, updateUserProfile, resetAllDemoData, triggerConfetti } = useApp();
+  const { user, updateUserProfile, signOut, triggerConfetti } = useApp();
   const navigate = useNavigate();
 
   const [formData, setFormData] = useState({
@@ -50,11 +50,12 @@ export const Settings = () => {
   };
 
   const handleExportData = () => {
+    const uid = user?.id;
     const data = {
       user: authService.getCurrentUser(),
-      friends: JSON.parse(localStorage.getItem('birthwish_friends_data') || '[]'),
-      drafts: JSON.parse(localStorage.getItem('birthwish_drafts_data') || '[]'),
-      history: JSON.parse(localStorage.getItem('birthwish_history_data') || '[]'),
+      friends: JSON.parse(uid ? (localStorage.getItem(`birthwish_friends_${uid}`) || '[]') : '[]'),
+      drafts: JSON.parse(uid ? (localStorage.getItem(`birthwish_drafts_${uid}`) || '[]') : '[]'),
+      history: JSON.parse(uid ? (localStorage.getItem(`birthwish_history_${uid}`) || '[]') : '[]'),
       exportedAt: new Date().toISOString()
     };
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
@@ -67,7 +68,7 @@ export const Settings = () => {
   };
 
   const handleLogout = async () => {
-    await authService.logout();
+    await signOut();
     navigate('/login');
   };
 
@@ -306,15 +307,7 @@ export const Settings = () => {
         </button>
       </div>
 
-      {/* Reset Confirmation */}
-      <ConfirmDialog
-        isOpen={showResetConfirm}
-        onClose={() => setShowResetConfirm(false)}
-        onConfirm={resetAllDemoData}
-        title="Reset Demo Data"
-        message="This will reset all friends, drafts, and message history back to the original sample dataset with Amit Singh, Priya Verma, and others."
-        confirmText="Reset Now"
-      />
+
     </div>
   );
 };

@@ -1,43 +1,41 @@
 /**
  * Message & Draft Approval Service
- * Manages drafts, approvals, rejections, delivery logs, and message dispatch links
+ * Manages drafts, approvals, rejections, delivery logs, and message dispatch links.
+ * Data is stored per-user using a userId-scoped localStorage key.
+ * New users start with EMPTY drafts and history — no demo data.
  */
-import { INITIAL_DRAFTS, INITIAL_HISTORY } from '../data/initialData';
 
-const DRAFTS_STORAGE_KEY = 'birthwish_drafts_data';
-const HISTORY_STORAGE_KEY = 'birthwish_history_data';
+/** Build user-scoped storage keys */
+const draftsKey = (userId) => `birthwish_drafts_${userId}`;
+const historyKey = (userId) => `birthwish_history_${userId}`;
 
 export const messageService = {
-  /**
-   * Get all drafts
-   */
-  getDrafts() {
+  /** Get all drafts for a user */
+  getDrafts(userId) {
+    if (!userId) return [];
     try {
-      const stored = localStorage.getItem(DRAFTS_STORAGE_KEY);
+      const stored = localStorage.getItem(draftsKey(userId));
       if (stored) return JSON.parse(stored);
-      localStorage.setItem(DRAFTS_STORAGE_KEY, JSON.stringify(INITIAL_DRAFTS));
-      return INITIAL_DRAFTS;
+      // First time: initialise with empty array
+      localStorage.setItem(draftsKey(userId), JSON.stringify([]));
+      return [];
     } catch {
-      return INITIAL_DRAFTS;
+      return [];
     }
   },
 
-  /**
-   * Get pending drafts count
-   */
-  getPendingCount() {
-    return this.getDrafts().filter(d => d.status === 'pending').length;
+  /** Get pending drafts count */
+  getPendingCount(userId) {
+    return this.getDrafts(userId).filter(d => d.status === 'pending').length;
   },
 
-  /**
-   * Update message content of a draft
-   */
-  updateDraft(id, newMessage) {
-    const drafts = this.getDrafts();
+  /** Update message content of a draft */
+  updateDraft(userId, id, newMessage) {
+    const drafts = this.getDrafts(userId);
     const index = drafts.findIndex(d => d.id === id);
     if (index === -1) throw new Error('Draft not found');
     drafts[index].message = newMessage;
-    localStorage.setItem(DRAFTS_STORAGE_KEY, JSON.stringify(drafts));
+    localStorage.setItem(draftsKey(userId), JSON.stringify(drafts));
     return drafts[index];
   },
 
@@ -45,24 +43,24 @@ export const messageService = {
    * Approve draft
    * Updates draft status to 'approved' and records an entry in the History log.
    */
-  approveDraft(id) {
-    const drafts = this.getDrafts();
+  approveDraft(userId, id) {
+    const drafts = this.getDrafts(userId);
     const index = drafts.findIndex(d => d.id === id);
     if (index === -1) throw new Error('Draft not found');
 
     const draft = drafts[index];
     draft.status = 'approved';
     draft.approvedAt = new Date().toISOString();
-    localStorage.setItem(DRAFTS_STORAGE_KEY, JSON.stringify(drafts));
+    localStorage.setItem(draftsKey(userId), JSON.stringify(drafts));
 
     // Record in history log
-    this.addHistoryEntry({
+    this.addHistoryEntry(userId, {
       recipient: draft.friendName,
       channel: draft.channel,
       phone: draft.phone,
       email: draft.email,
       message: draft.message,
-      status: 'approved', // Transparent status (approved for dispatch / manual send)
+      status: 'approved',
       date: new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) + ', ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       timestamp: new Date().toISOString()
     });
@@ -70,11 +68,9 @@ export const messageService = {
     return draft;
   },
 
-  /**
-   * Reject draft
-   */
-  rejectDraft(id, reason = 'Rejected by user') {
-    const drafts = this.getDrafts();
+  /** Reject draft */
+  rejectDraft(userId, id, reason = 'Rejected by user') {
+    const drafts = this.getDrafts(userId);
     const index = drafts.findIndex(d => d.id === id);
     if (index === -1) throw new Error('Draft not found');
 
@@ -82,10 +78,10 @@ export const messageService = {
     draft.status = 'rejected';
     draft.rejectedAt = new Date().toISOString();
     draft.rejectReason = reason;
-    localStorage.setItem(DRAFTS_STORAGE_KEY, JSON.stringify(drafts));
+    localStorage.setItem(draftsKey(userId), JSON.stringify(drafts));
 
     // Record in history
-    this.addHistoryEntry({
+    this.addHistoryEntry(userId, {
       recipient: draft.friendName,
       channel: draft.channel,
       phone: draft.phone,
@@ -99,17 +95,15 @@ export const messageService = {
     return draft;
   },
 
-  /**
-   * Create a new draft with duplicate prevention check
-   */
-  createDraft(draftData) {
-    const drafts = this.getDrafts();
+  /** Create a new draft with duplicate prevention check */
+  createDraft(userId, draftData) {
+    const drafts = this.getDrafts(userId);
     const targetYear = new Date().getFullYear();
 
     // Prevent duplicate draft for the same friend, targetYear, and channel
-    const duplicate = drafts.find(d => 
-      d.friendId === draftData.friendId && 
-      d.channel === draftData.channel && 
+    const duplicate = drafts.find(d =>
+      d.friendId === draftData.friendId &&
+      d.channel === draftData.channel &&
       d.status !== 'rejected' &&
       new Date(d.createdAt).getFullYear() === targetYear
     );
@@ -127,41 +121,36 @@ export const messageService = {
     };
 
     const updated = [newDraft, ...drafts];
-    localStorage.setItem(DRAFTS_STORAGE_KEY, JSON.stringify(updated));
+    localStorage.setItem(draftsKey(userId), JSON.stringify(updated));
     return newDraft;
   },
 
-  /**
-   * Get delivery & approval history
-   */
-  getHistory() {
+  /** Get delivery & approval history */
+  getHistory(userId) {
+    if (!userId) return [];
     try {
-      const stored = localStorage.getItem(HISTORY_STORAGE_KEY);
+      const stored = localStorage.getItem(historyKey(userId));
       if (stored) return JSON.parse(stored);
-      localStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify(INITIAL_HISTORY));
-      return INITIAL_HISTORY;
+      localStorage.setItem(historyKey(userId), JSON.stringify([]));
+      return [];
     } catch {
-      return INITIAL_HISTORY;
+      return [];
     }
   },
 
-  /**
-   * Add entry to history log
-   */
-  addHistoryEntry(entry) {
-    const history = this.getHistory();
+  /** Add entry to history log */
+  addHistoryEntry(userId, entry) {
+    const history = this.getHistory(userId);
     const newEntry = {
       id: `hist_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`,
       ...entry
     };
     const updated = [newEntry, ...history];
-    localStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify(updated));
+    localStorage.setItem(historyKey(userId), JSON.stringify(updated));
     return newEntry;
   },
 
-  /**
-   * Generate real direct WhatsApp Web/App click-to-chat URL
-   */
+  /** Generate real direct WhatsApp Web/App click-to-chat URL */
   getWhatsAppUrl(phone, message) {
     const cleanPhone = (phone || '').replace(/[^0-9]/g, '');
     const encodedMsg = encodeURIComponent(message || '');
@@ -171,9 +160,7 @@ export const messageService = {
     return `https://api.whatsapp.com/send?text=${encodedMsg}`;
   },
 
-  /**
-   * Generate real mailto link
-   */
+  /** Generate real mailto link */
   getMailtoUrl(email, subject, body) {
     const cleanEmail = encodeURIComponent(email || '');
     const encSubject = encodeURIComponent(subject || 'Happy Birthday! 🎂🎉');
@@ -181,20 +168,18 @@ export const messageService = {
     return `mailto:${cleanEmail}?subject=${encSubject}&body=${encBody}`;
   },
 
-  /**
-   * Generate SMS intent link
-   */
+  /** Generate SMS intent link */
   getSmsUrl(phone, body) {
     const cleanPhone = (phone || '').replace(/[^0-9+]/g, '');
     const encBody = encodeURIComponent(body || '');
     return `sms:${cleanPhone}?body=${encBody}`;
   },
 
-  /**
-   * Reset drafts & history to initial state
-   */
-  resetToInitial() {
-    localStorage.setItem(DRAFTS_STORAGE_KEY, JSON.stringify(INITIAL_DRAFTS));
-    localStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify(INITIAL_HISTORY));
+  /** Clear all data for a user */
+  clearUserData(userId) {
+    if (userId) {
+      localStorage.removeItem(draftsKey(userId));
+      localStorage.removeItem(historyKey(userId));
+    }
   }
 };

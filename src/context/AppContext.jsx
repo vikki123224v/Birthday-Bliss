@@ -15,12 +15,17 @@ export const AppProvider = ({ children }) => {
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // Load all data
-  const loadData = useCallback(() => {
+  // Derive userId safely
+  const userId = user?.id || null;
+
+  // Load all data — scoped to the current user
+  const loadData = useCallback((uid) => {
+    const id = uid ?? userId;
     try {
-      const allFriends = friendService.getAllSortedByUpcoming();
-      const allDrafts = messageService.getDrafts();
-      const allHistory = messageService.getHistory();
+      setLoading(true);
+      const allFriends = id ? friendService.getAllSortedByUpcoming(id) : [];
+      const allDrafts = id ? messageService.getDrafts(id) : [];
+      const allHistory = id ? messageService.getHistory(id) : [];
       setFriends(allFriends);
       setDrafts(allDrafts);
       setHistory(allHistory);
@@ -29,11 +34,12 @@ export const AppProvider = ({ children }) => {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [userId]);
 
+  // Reload data whenever the logged-in user changes
   useEffect(() => {
-    loadData();
-  }, [loadData]);
+    loadData(userId);
+  }, [userId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Derived Birthday lists
   const todayBirthdays = useMemo(() => {
@@ -71,16 +77,17 @@ export const AppProvider = ({ children }) => {
 
   // Friend actions
   const addFriend = useCallback((friendData) => {
+    if (!userId) return;
     try {
-      const created = friendService.add(friendData);
-      loadData();
+      const created = friendService.add(userId, friendData);
+      loadData(userId);
       toast.success(`${created.name} added to your circle! 🎉`);
-      
+
       // If their birthday is today or soon, automatically generate a draft
-      const newFriendEnriched = friendService.getById(created.id);
+      const newFriendEnriched = friendService.getById(userId, created.id);
       if (newFriendEnriched && (newFriendEnriched.isToday || newFriendEnriched.daysLeft <= 7)) {
         const defaultMsg = created.customMessage || generateMessage(created.name, user?.defaultGreetingStyle || 'friendly', newFriendEnriched.age);
-        messageService.createDraft({
+        messageService.createDraft(userId, {
           friendId: created.id,
           friendName: created.name,
           avatar: created.avatar,
@@ -90,54 +97,58 @@ export const AppProvider = ({ children }) => {
           channel: created.preferredChannel,
           message: defaultMsg
         });
-        loadData();
+        loadData(userId);
       }
       return created;
     } catch (err) {
       toast.error('Could not save friend. Please check fields.');
       throw err;
     }
-  }, [loadData, user]);
+  }, [userId, loadData, user]);
 
   const updateFriend = useCallback((id, updates) => {
+    if (!userId) return;
     try {
-      const updated = friendService.update(id, updates);
-      loadData();
+      const updated = friendService.update(userId, id, updates);
+      loadData(userId);
       toast.success(`${updated.name}'s details updated ✨`);
       return updated;
     } catch (err) {
       toast.error('Could not update friend.');
       throw err;
     }
-  }, [loadData]);
+  }, [userId, loadData]);
 
   const deleteFriend = useCallback((id) => {
+    if (!userId) return;
     try {
-      const friend = friendService.getById(id);
-      friendService.delete(id);
-      loadData();
+      const friend = friendService.getById(userId, id);
+      friendService.delete(userId, id);
+      loadData(userId);
       toast.success(`${friend?.name || 'Friend'} removed`);
     } catch (err) {
       toast.error('Could not remove friend.');
     }
-  }, [loadData]);
+  }, [userId, loadData]);
 
   // Draft actions
   const updateDraft = useCallback((id, message) => {
+    if (!userId) return;
     try {
-      const updated = messageService.updateDraft(id, message);
-      loadData();
+      const updated = messageService.updateDraft(userId, id, message);
+      loadData(userId);
       toast.success('Draft message updated');
       return updated;
     } catch (err) {
       toast.error('Failed to update draft');
     }
-  }, [loadData]);
+  }, [userId, loadData]);
 
   const approveDraft = useCallback((id, shouldOpenChannel = false) => {
+    if (!userId) return;
     try {
-      const approved = messageService.approveDraft(id);
-      loadData();
+      const approved = messageService.approveDraft(userId, id);
+      loadData(userId);
       triggerConfetti();
       toast.success(`Birthday wish for ${approved.friendName} approved! 🎂`);
 
@@ -154,20 +165,22 @@ export const AppProvider = ({ children }) => {
     } catch (err) {
       toast.error('Could not approve draft');
     }
-  }, [loadData, triggerConfetti]);
+  }, [userId, loadData, triggerConfetti]);
 
   const rejectDraft = useCallback((id, reason) => {
+    if (!userId) return;
     try {
-      const rejected = messageService.rejectDraft(id, reason);
-      loadData();
+      const rejected = messageService.rejectDraft(userId, id, reason);
+      loadData(userId);
       toast('Wish draft rejected', { icon: '🚫' });
       return rejected;
     } catch (err) {
       toast.error('Could not reject draft');
     }
-  }, [loadData]);
+  }, [userId, loadData]);
 
   const sendWishNow = useCallback((friend) => {
+    if (!userId) return;
     // Check if there is an existing draft
     const existingDraft = drafts.find(d => d.friendId === friend.id && d.status === 'pending');
     if (existingDraft) {
@@ -175,7 +188,7 @@ export const AppProvider = ({ children }) => {
     }
 
     const defaultMsg = friend.customMessage || generateMessage(friend.name, user?.defaultGreetingStyle || 'friendly', friend.age);
-    const newDraft = messageService.createDraft({
+    const newDraft = messageService.createDraft(userId, {
       friendId: friend.id,
       friendName: friend.name,
       avatar: friend.avatar,
@@ -185,9 +198,9 @@ export const AppProvider = ({ children }) => {
       channel: friend.preferredChannel,
       message: defaultMsg
     });
-    loadData();
+    loadData(userId);
     return newDraft;
-  }, [drafts, user, loadData]);
+  }, [userId, drafts, user, loadData]);
 
   // User Profile
   const updateUserProfile = useCallback((updates) => {
@@ -197,17 +210,20 @@ export const AppProvider = ({ children }) => {
     return updated;
   }, []);
 
-  const resetAllDemoData = useCallback(() => {
-    friendService.resetToInitial();
-    messageService.resetToInitial();
-    loadData();
-    toast.success('Sample data restored!');
-  }, [loadData]);
+  // Sign out helper — clears local user state and reloads empty data
+  const signOut = useCallback(async () => {
+    await authService.logout();
+    setUser(null);
+    setFriends([]);
+    setDrafts([]);
+    setHistory([]);
+  }, []);
 
   const value = {
     user,
     setUser,
     updateUserProfile,
+    signOut,
     friends,
     loading,
     todayBirthdays,
@@ -223,8 +239,7 @@ export const AppProvider = ({ children }) => {
     rejectDraft,
     sendWishNow,
     triggerConfetti,
-    resetAllDemoData,
-    reload: loadData
+    reload: () => loadData(userId)
   };
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

@@ -1,29 +1,32 @@
 /**
  * Friend Management Service
- * Provides CRUD, search, birthday calculations, and sorting
+ * Provides CRUD, search, birthday calculations, and sorting.
+ * Data is stored per-user using a userId-scoped localStorage key.
+ * New users start with an EMPTY list — no demo data.
  */
-import { INITIAL_FRIENDS } from '../data/initialData';
 import { getNextBirthdayInfo } from './birthdayService';
 
-const FRIENDS_STORAGE_KEY = 'birthwish_friends_data';
+/** Build a user-scoped storage key */
+const storageKey = (userId) => `birthwish_friends_${userId}`;
 
 export const friendService = {
   /**
-   * Get all friends enriched with current countdown, age, and next birthday
+   * Get all friends enriched with current countdown, age, and next birthday.
+   * @param {string} userId - The current user's unique ID
    */
-  getAll() {
+  getAll(userId) {
+    if (!userId) return [];
     let friends = [];
     try {
-      const stored = localStorage.getItem(FRIENDS_STORAGE_KEY);
-      if (stored) {
-        friends = JSON.parse(stored);
-      } else {
-        friends = INITIAL_FRIENDS;
-        localStorage.setItem(FRIENDS_STORAGE_KEY, JSON.stringify(friends));
+      const stored = localStorage.getItem(storageKey(userId));
+      friends = stored ? JSON.parse(stored) : [];
+      // First time: initialise with an empty array for this user
+      if (!stored) {
+        localStorage.setItem(storageKey(userId), JSON.stringify([]));
       }
     } catch (e) {
       console.error('Error reading friends data:', e);
-      friends = INITIAL_FRIENDS;
+      friends = [];
     }
 
     // Enrich every friend with accurate live countdown
@@ -42,42 +45,32 @@ export const friendService = {
     });
   },
 
-  /**
-   * Get friends sorted by next upcoming birthday
-   */
-  getAllSortedByUpcoming() {
-    const list = this.getAll();
+  /** Get friends sorted by next upcoming birthday */
+  getAllSortedByUpcoming(userId) {
+    const list = this.getAll(userId);
     return list.sort((a, b) => a.daysLeft - b.daysLeft);
   },
 
-  /**
-   * Friends celebrating birthday today
-   */
-  getTodayBirthdays() {
-    return this.getAll().filter(f => f.isToday);
+  /** Friends celebrating birthday today */
+  getTodayBirthdays(userId) {
+    return this.getAll(userId).filter(f => f.isToday);
   },
 
-  /**
-   * Upcoming birthdays excluding today, sorted
-   */
-  getUpcomingBirthdays(limit = 10) {
-    const sorted = this.getAllSortedByUpcoming().filter(f => !f.isToday);
+  /** Upcoming birthdays excluding today, sorted */
+  getUpcomingBirthdays(userId, limit = 10) {
+    const sorted = this.getAllSortedByUpcoming(userId).filter(f => !f.isToday);
     return limit ? sorted.slice(0, limit) : sorted;
   },
 
-  /**
-   * Get single friend by id
-   */
-  getById(id) {
-    const friends = this.getAll();
+  /** Get single friend by id */
+  getById(userId, id) {
+    const friends = this.getAll(userId);
     return friends.find(f => f.id === id) || null;
   },
 
-  /**
-   * Add a new friend
-   */
-  add(data) {
-    const rawList = this.getRawList();
+  /** Add a new friend */
+  add(userId, data) {
+    const rawList = this.getRawList(userId);
     const newFriend = {
       id: `friend_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`,
       name: data.name.trim(),
@@ -93,15 +86,13 @@ export const friendService = {
     };
 
     const updated = [newFriend, ...rawList];
-    localStorage.setItem(FRIENDS_STORAGE_KEY, JSON.stringify(updated));
+    localStorage.setItem(storageKey(userId), JSON.stringify(updated));
     return newFriend;
   },
 
-  /**
-   * Update an existing friend
-   */
-  update(id, updates) {
-    const rawList = this.getRawList();
+  /** Update an existing friend */
+  update(userId, id, updates) {
+    const rawList = this.getRawList(userId);
     const index = rawList.findIndex(f => f.id === id);
     if (index === -1) throw new Error('Friend not found');
 
@@ -112,37 +103,31 @@ export const friendService = {
     };
 
     rawList[index] = updatedFriend;
-    localStorage.setItem(FRIENDS_STORAGE_KEY, JSON.stringify(rawList));
+    localStorage.setItem(storageKey(userId), JSON.stringify(rawList));
     return updatedFriend;
   },
 
-  /**
-   * Delete a friend by ID
-   */
-  delete(id) {
-    const rawList = this.getRawList();
+  /** Delete a friend by ID */
+  delete(userId, id) {
+    const rawList = this.getRawList(userId);
     const filtered = rawList.filter(f => f.id !== id);
-    localStorage.setItem(FRIENDS_STORAGE_KEY, JSON.stringify(filtered));
+    localStorage.setItem(storageKey(userId), JSON.stringify(filtered));
     return true;
   },
 
-  /**
-   * Raw list without dynamic enrichments (for clean storage)
-   */
-  getRawList() {
+  /** Raw list without dynamic enrichments (for clean storage) */
+  getRawList(userId) {
+    if (!userId) return [];
     try {
-      const stored = localStorage.getItem(FRIENDS_STORAGE_KEY);
-      return stored ? JSON.parse(stored) : INITIAL_FRIENDS;
+      const stored = localStorage.getItem(storageKey(userId));
+      return stored ? JSON.parse(stored) : [];
     } catch {
-      return INITIAL_FRIENDS;
+      return [];
     }
   },
 
-  /**
-   * Reset data to initial state
-   */
-  resetToInitial() {
-    localStorage.setItem(FRIENDS_STORAGE_KEY, JSON.stringify(INITIAL_FRIENDS));
-    return this.getAll();
+  /** Clear all data for a user (used on account deletion) */
+  clearUserData(userId) {
+    if (userId) localStorage.removeItem(storageKey(userId));
   }
 };
