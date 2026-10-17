@@ -22,7 +22,7 @@ export const Approvals = () => {
 
   const handleConfirmApproval = () => {
     if (draftToApprove) {
-      approveDraft(draftToApprove.id, true);
+      approveDraft(draftToApprove.id); // channel handled automatically inside context
       setDraftToApprove(null);
     }
   };
@@ -126,7 +126,13 @@ export const Approvals = () => {
         onClose={() => setDraftToApprove(null)}
         onConfirm={handleConfirmApproval}
         title="Approve Birthday Wish"
-        message={`Are you sure you want to approve this birthday message for ${draftToApprove?.friendName} via ${draftToApprove?.channel}? In this prototype stage, this records the approval and prepares your message.`}
+        message={
+          draftToApprove?.channel === 'Email'
+            ? `Send this birthday email to ${draftToApprove?.friendName} at ${draftToApprove?.email || 'their email'}? It will be delivered automatically.`
+            : draftToApprove?.channel === 'WhatsApp'
+            ? `WhatsApp will open with the message pre-filled for ${draftToApprove?.friendName}. Just tap Send in WhatsApp.`
+            : `Your SMS app will open with the message pre-filled for ${draftToApprove?.friendName}. Just tap Send.`
+        }
         confirmText="Approve & Send"
       />
 

@@ -5,6 +5,7 @@ import { friendService } from '../services/friendService';
 import { messageService } from '../services/messageService';
 import { authService } from '../services/authService';
 import { generateMessage } from '../services/birthdayService';
+import { sendBirthdayEmail, isEmailConfigured } from '../services/emailService';
 
 const AppContext = createContext(null);
 
@@ -144,28 +145,76 @@ export const AppProvider = ({ children }) => {
     }
   }, [userId, loadData]);
 
-  const approveDraft = useCallback((id, shouldOpenChannel = false) => {
+  const approveDraft = useCallback(async (id) => {
     if (!userId) return;
     try {
       const approved = messageService.approveDraft(userId, id);
       loadData(userId);
       triggerConfetti();
-      toast.success(`Birthday wish for ${approved.friendName} approved! 🎂`);
 
-      if (shouldOpenChannel) {
-        if (approved.channel === 'WhatsApp' && approved.phone) {
-          const url = messageService.getWhatsAppUrl(approved.phone, approved.message);
-          window.open(url, '_blank', 'noopener,noreferrer');
-        } else if (approved.channel === 'Email' && approved.email) {
-          const url = messageService.getMailtoUrl(approved.email, `Happy Birthday ${approved.friendName}! 🎂`, approved.message);
-          window.location.href = url;
+      const channel = approved.channel;
+
+      // ── EMAIL: auto-send via EmailJS ──────────────────────────────────────
+      if (channel === 'Email') {
+        if (!approved.email) {
+          toast.error(`No email address saved for ${approved.friendName}. Add it in Friends.`);
+          return approved;
         }
+
+        if (!isEmailConfigured) {
+          // EmailJS not set up yet — fall back to mailto:
+          toast('EmailJS not configured. Opening your mail app instead...', { icon: '📧' });
+          const url = messageService.getMailtoUrl(
+            approved.email,
+            `🎂 Happy Birthday, ${approved.friendName}!`,
+            approved.message
+          );
+          window.open(url, '_blank');
+        } else {
+          const toastId = toast.loading(`Sending email to ${approved.friendName}...`);
+          const result = await sendBirthdayEmail({
+            toEmail: approved.email,
+            toName: approved.friendName,
+            fromName: user?.name || 'BirthWish',
+            message: approved.message
+          });
+
+          if (result.success) {
+            toast.success(`🎉 Email sent to ${approved.friendName} automatically!`, { id: toastId });
+          } else {
+            toast.error(`Email failed: ${result.error}`, { id: toastId, duration: 6000 });
+          }
+        }
+
+      // ── WHATSAPP: open chat with pre-filled message (browser limitation) ──
+      } else if (channel === 'WhatsApp') {
+        if (!approved.phone) {
+          toast.error(`No phone number saved for ${approved.friendName}. Add it in Friends.`);
+          return approved;
+        }
+        const url = messageService.getWhatsAppUrl(approved.phone, approved.message);
+        window.open(url, '_blank', 'noopener,noreferrer');
+        toast.success(`WhatsApp opened for ${approved.friendName} — just tap Send! 💬`, { duration: 5000 });
+
+      // ── SMS: open SMS app with pre-filled message ─────────────────────────
+      } else if (channel === 'SMS') {
+        if (!approved.phone) {
+          toast.error(`No phone number saved for ${approved.friendName}. Add it in Friends.`);
+          return approved;
+        }
+        const url = messageService.getSmsUrl(approved.phone, approved.message);
+        window.open(url);
+        toast.success(`SMS app opened for ${approved.friendName} — just tap Send! 📱`, { duration: 5000 });
+
+      } else {
+        toast.success(`Birthday wish for ${approved.friendName} approved! 🎂`);
       }
+
       return approved;
     } catch (err) {
       toast.error('Could not approve draft');
     }
-  }, [userId, loadData, triggerConfetti]);
+  }, [userId, loadData, triggerConfetti, user]);
 
   const rejectDraft = useCallback((id, reason) => {
     if (!userId) return;
