@@ -29,7 +29,8 @@ export const FriendFormModal = ({
     preferredChannel: 'WhatsApp',
     customMessage: '',
     avatar: '',
-    notes: ''
+    notes: '',
+    autoSend: false
   });
 
   const [errors, setErrors] = useState({});
@@ -45,7 +46,8 @@ export const FriendFormModal = ({
         preferredChannel: initialData.preferredChannel || 'WhatsApp',
         customMessage: initialData.customMessage || '',
         avatar: initialData.avatar || '',
-        notes: initialData.notes || ''
+        notes: initialData.notes || '',
+        autoSend: Boolean(initialData.autoSend)
       });
     } else {
       setFormData({
@@ -57,7 +59,8 @@ export const FriendFormModal = ({
         preferredChannel: 'WhatsApp',
         customMessage: '',
         avatar: '',
-        notes: ''
+        notes: '',
+        autoSend: false
       });
     }
     setErrors({});
@@ -265,6 +268,38 @@ export const FriendFormModal = ({
               <option value="SMS">📱 SMS</option>
             </select>
           </div>
+        </div>
+
+        {/* Automatic Send Option */}
+        <div
+          style={{
+            backgroundColor: '#F9FAFB',
+            border: '1px solid var(--border-light)',
+            borderRadius: 'var(--radius-md)',
+            padding: '12px 16px',
+            marginBottom: '16px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between'
+          }}
+        >
+          <div>
+            <div style={{ fontSize: '0.88rem', fontWeight: 600, color: 'var(--text-dark)' }}>
+              Automatic Birthday Wishes
+            </div>
+            <div style={{ fontSize: '0.76rem', color: 'var(--text-muted)' }}>
+              Automatically send wish on birthday (Email only). If disabled, creates a pending draft for review.
+            </div>
+          </div>
+          <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
+            <input
+              type="checkbox"
+              name="autoSend"
+              checked={Boolean(formData.autoSend)}
+              onChange={(e) => setFormData(prev => ({ ...prev, autoSend: e.target.checked }))}
+              style={{ width: '18px', height: '18px', accentColor: 'var(--primary-pink)', cursor: 'pointer' }}
+            />
+          </label>
         </div>
 
         {/* Custom Birthday Message with Template Assistant */}

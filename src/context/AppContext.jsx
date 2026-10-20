@@ -154,36 +154,31 @@ export const AppProvider = ({ children }) => {
 
       const channel = approved.channel;
 
-      // ── EMAIL: auto-send via EmailJS ──────────────────────────────────────
+      // ── EMAIL: auto-send via Serverless Provider (Gmail / Resend) ────────
       if (channel === 'Email') {
         if (!approved.email) {
           toast.error(`No email address saved for ${approved.friendName}. Add it in Friends.`);
           return approved;
         }
 
-        if (!isEmailConfigured) {
-          // EmailJS not set up yet — fall back to mailto:
-          toast('EmailJS not configured. Opening your mail app instead...', { icon: '📧' });
+        const toastId = toast.loading(`Sending email to ${approved.friendName}...`);
+        const result = await sendBirthdayEmail({
+          toEmail: approved.email,
+          toName: approved.friendName,
+          fromName: user?.name || 'Birthday Bliss',
+          message: approved.message
+        });
+
+        if (result.success) {
+          toast.success(`🎉 Birthday email sent to ${approved.friendName}!`, { id: toastId });
+        } else {
+          toast.error(`Email failed: ${result.error}. Opening mail app as fallback...`, { id: toastId, duration: 6000 });
           const url = messageService.getMailtoUrl(
             approved.email,
             `🎂 Happy Birthday, ${approved.friendName}!`,
             approved.message
           );
           window.open(url, '_blank');
-        } else {
-          const toastId = toast.loading(`Sending email to ${approved.friendName}...`);
-          const result = await sendBirthdayEmail({
-            toEmail: approved.email,
-            toName: approved.friendName,
-            fromName: user?.name || 'BirthWish',
-            message: approved.message
-          });
-
-          if (result.success) {
-            toast.success(`🎉 Email sent to ${approved.friendName} automatically!`, { id: toastId });
-          } else {
-            toast.error(`Email failed: ${result.error}`, { id: toastId, duration: 6000 });
-          }
         }
 
       // ── WHATSAPP: open chat with pre-filled message (browser limitation) ──

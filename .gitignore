@@ -23,4 +23,15 @@ dist-ssr
 *.sln
 *.sw?
 
+# Environment and secrets
+.env
+.env.*
+!.env.example
+*.env
+service-account*.json
+*serviceAccount*.json
+*firebase-adminsdk*.json
+
+# Deployments & Vercel
 .vercel
+

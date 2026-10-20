@@ -82,6 +82,7 @@ export const friendService = {
       customMessage: data.customMessage?.trim() || '',
       avatar: data.avatar || `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(data.name)}`,
       notes: data.notes?.trim() || '',
+      autoSend: Boolean(data.autoSend),
       createdAt: new Date().toISOString()
     };
 

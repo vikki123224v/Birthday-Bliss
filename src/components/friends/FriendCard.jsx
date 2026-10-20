@@ -92,8 +92,23 @@ export const FriendCard = ({
               <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{friend.email}</span>
             </div>
           )}
-          <div style={{ marginTop: '4px' }}>
+          <div style={{ marginTop: '4px', display: 'flex', alignItems: 'center', gap: '8px' }}>
             <ChannelBadge channel={friend.preferredChannel} />
+            {friend.autoSend && (
+              <span
+                style={{
+                  fontSize: '0.72rem',
+                  backgroundColor: '#ECFDF5',
+                  color: '#059669',
+                  padding: '2px 8px',
+                  borderRadius: '9999px',
+                  fontWeight: 600,
+                  border: '1px solid #A7F3D0'
+                }}
+              >
+                ⚡ Auto-Wish On
+              </span>
+            )}
           </div>
         </div>
       </div>
