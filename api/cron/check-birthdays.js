@@ -112,12 +112,12 @@ export default async function handler(req, res) {
         if (isAutoSendEnabled && channel === 'Email' && recipientEmail) {
           if (dryRun) {
             results.autoSentEmails++;
+            const maskedEmail = recipientEmail.replace(/^(.)(.*)(@.*)$/, (_, first, mid, domain) => `${first}${'*'.repeat(Math.min(mid.length, 5))}${domain}`);
             results.details.push({
-              user: userId,
               friend: friend.name,
-              email: recipientEmail,
+              maskedEmail,
               action: 'dry_run_auto_send',
-              message: defaultGreeting
+              channel: 'Email'
             });
             continue;
           }
@@ -199,7 +199,23 @@ export default async function handler(req, res) {
           }
         } else {
           // If autoSend is disabled (default) OR channel is not Email:
-          // Create or maintain a pending draft for explicit user approval!
+          // In dryRun: report that a draft would be created, with NO writes to Firestore
+          if (dryRun) {
+            if (!draftAlreadyExists) {
+              results.draftsCreated++;
+              results.details.push({
+                user: userId,
+                friend: friend.name,
+                action: 'dry_run_draft_create',
+                channel
+              });
+            } else {
+              results.alreadySentOrExisting++;
+            }
+            continue;
+          }
+
+          // In live execution: Create or maintain a pending draft for explicit user approval!
           if (!draftAlreadyExists) {
             const draftData = {
               friendId,
